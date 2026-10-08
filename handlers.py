@@ -51,6 +51,8 @@ from database import (
 class AdminNoticeState(StatesGroup):
     waiting_for_message = State()
     target_user_id = State()
+
+
 # =========================================================
 # LOGGER
 # =========================================================
@@ -60,9 +62,11 @@ logger = logging.getLogger(__name__)
 router = Router()
 router.include_router(panel_router)  # 🔥 Ei line ta add korbe
 
+
 # 🔥 ঠিক এইখানে গ্লোবাল ব্যান মিডলওয়্যার এবং নোটিশ হ্যান্ডলার বসিয়ে দিন:
 
 from aiogram import BaseMiddleware
+
 
 class GlobalBanMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
@@ -72,9 +76,14 @@ class GlobalBanMiddleware(BaseMiddleware):
             
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
-            cursor = await db.execute("SELECT * FROM users WHERE user_id = ?", (user.id,))
+            cursor = await db.execute(
+                "SELECT * FROM users WHERE user_id = ?",
+                (user.id,)
+            )
             row = await cursor.fetchone()
+
             is_banned = 0
+
             if row:
                 try:
                     is_banned = row["is_banned"]
@@ -86,24 +95,36 @@ class GlobalBanMiddleware(BaseMiddleware):
             if isinstance(event, types.CallbackQuery):
                 if "support" in event.data.lower() or "sys_" in event.data:
                     return await handler(event, data)
-                await event.answer("🚫 You are permanently BANNED! Only Support is allowed.", show_alert=True)
+
+                await event.answer(
+                    "🚫 You are permanently BANNED! Only Support is allowed.",
+                    show_alert=True
+                )
                 return
+
             elif isinstance(event, types.Message):
                 if event.text and "/start" in event.text:
                     pass # Start অ্যালাউ করা হলো যাতে সাপোর্ট বাটন দেখতে পায়
                 else:
-                    await event.answer("🚫 You are permanently BANNED from using this bot. Contact Support.")
+                    await event.answer(
+                        "🚫 You are permanently BANNED from using this bot. Contact Support."
+                    )
                     return
                     
         return await handler(event, data)
+
 
 # 🔥 গ্লোবাল লক চালু
 router.message.middleware(GlobalBanMiddleware())
 router.callback_query.middleware(GlobalBanMiddleware())
 
+
 # 🔥 Notice Handler একদম ওপরে রাখা হলো যাতে অন্য কেউ ক্যাচ না করে
 @router.message(AdminNoticeState.waiting_for_message)
-async def process_sys_notice_send(message: types.Message, state: FSMContext):
+async def process_sys_notice_send(
+    message: types.Message,
+    state: FSMContext
+):
     if message.text and message.text.lower() == "/cancel":
         await state.clear()
         return await message.reply("Action cancelled.")
@@ -112,17 +133,28 @@ async def process_sys_notice_send(message: types.Message, state: FSMContext):
     target_id = data.get("target_user_id")
     
     notice_text = (
-        f'<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji> <b>Message from Admin:</b>\n\n'
+        f'<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji> '
+        f'<b>Message from Admin:</b>\n\n'
         f'{message.html_text}'
     )
     
     try:
-        await message.bot.send_message(chat_id=target_id, text=notice_text)
-        await message.reply(f"✅ Notice sent successfully to user {target_id}.")
+        await message.bot.send_message(
+            chat_id=target_id,
+            text=notice_text
+        )
+
+        await message.reply(
+            f"✅ Notice sent successfully to user {target_id}."
+        )
+
     except Exception:
-        await message.reply("❌ Failed to send notice. User might have blocked the bot.")
+        await message.reply(
+            "❌ Failed to send notice. User might have blocked the bot."
+        )
         
     await state.clear()
+
 
 # =========================================================
 # CONSTANTS
@@ -136,8 +168,9 @@ MENU_REFER = "𝐑𝐄𝐅𝐄𝐑"
 MENU_WALLET = "𝐖𝐀𝐋𝐋𝐄𝐓"
 MENU_ADMIN = "𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋"
 MENU_LEADERBOARD = "𝐋𝐄𝐀𝐃𝐄𝐑𝐁𝐎𝐀𝐑𝐃"
-#
-=========================================================
+
+
+# =========================================================
 # PREMIUM / CUSTOM EMOJI IDs
 # =========================================================
 
@@ -167,15 +200,23 @@ SERVICE_EMOJIS = {
     "default": {"emoji_id": "5346066456142429527", "placeholder": ""},
 }
 
+
 def format_p_emo(emoji_id: str, fallback: str) -> str:
     if emoji_id and emoji_id != "0": 
         return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
+
     return fallback
+
 
 def get_service_custom_emoji_id(service_name: str) -> str:
     lower_s = str(service_name).lower().strip()
+
     # 🔥 Since it's a dictionary now, we need to extract ["emoji_id"]
-    service_data = SERVICE_EMOJIS.get(lower_s, SERVICE_EMOJIS["default"])
+    service_data = SERVICE_EMOJIS.get(
+        lower_s,
+        SERVICE_EMOJIS["default"]
+    )
+
     return service_data["emoji_id"]
 
 
@@ -372,6 +413,7 @@ COUNTRY_EMOJIS = {
     "ZIMBABWE": "5292167442666110763",
 }
 
+
 # =========================================================
 # BUTTON EMOJI IDs
 # =========================================================
@@ -416,9 +458,11 @@ class Form(StatesGroup):
     waiting_for_new_service = State()
 
     waiting_for_edit_service_rate = State()
+
     # Eita notun add koro
     waiting_for_panel_url = State()
     editing_panel_name = State()
+
 
 # =========================================================
 # BOLD FONT
@@ -437,7 +481,9 @@ def to_bold_font(text: str) -> str:
         "𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵"
     )
 
-    return text.translate(str.maketrans(normal, bold))
+    return text.translate(
+        str.maketrans(normal, bold)
+    )
 
 
 # =========================================================
@@ -483,6 +529,7 @@ def normalize_button_text(text: str) -> str:
 # =========================================================
 # CALLBACK DATA PACK / UNPACK
 # =========================================================
+
 def pack_callback(prefix: str, *values: Any) -> str:
     raw = "||".join(str(v) for v in values)
 
@@ -498,507 +545,449 @@ def unpack_callback(data: str, prefix: str) -> list[str]:
 
     if not data.startswith(marker):
         return []
+ if not callback.from_user:
+        return False
 
-    encoded = data[len(marker):]
-
-    padding = "=" * (-len(encoded) % 4)
+    user_id = callback.from_user.id
 
     try:
-        raw = base64.urlsafe_b64decode(
-            encoded + padding
-        ).decode("utf-8")
+        async with aiosqlite.connect(DB_PATH) as db:
+            cursor = await db.execute(
+                """
+                SELECT is_admin
+                FROM users
+                WHERE user_id = ?
+                """,
+                (user_id,)
+            )
+
+            row = await cursor.fetchone()
+
+        if row and row[0]:
+            return True
+
     except Exception:
-        return []
+        logger.exception("Admin check failed")
 
-    return raw.split("||")
+    await safe_answer(
+        callback,
+        "🚫 Admin access required.",
+        show_alert=True,
+    )
 
-
-# =========================================================
-# SERVICE EMOJI
-# =========================================================
-
-def get_service_custom_emoji_id(service_name: str) -> str:
-    name = str(service_name).lower().strip()
-
-    return SERVICE_EMOJIS.get(
-        name,
-        SERVICE_EMOJIS["default"],
-    )["emoji_id"]
-
-
-def get_service_placeholder(service_name: str) -> str:
-    name = str(service_name).lower().strip()
-
-    return SERVICE_EMOJIS.get(
-        name,
-        SERVICE_EMOJIS["default"],
-    )["placeholder"]
+    return False
 
 
 # =========================================================
-# COUNTRY EMOJI
+# SERVICE / COUNTRY HELPERS
 # =========================================================
 
-def get_country_custom_emoji_id(country_name: str) -> str:
-    base_country = re.sub(r'\s*\d+$', '', str(country_name)).strip().upper()
-    
-    for key, emoji_id in COUNTRY_EMOJIS.items():
-        if key != "default" and key in base_country:
-            return emoji_id
-    return COUNTRY_EMOJIS["default"]
-
-
-# =========================================================
-# PHONE NUMBER
-# =========================================================
-
-def extract_pure_number_without_cc(
-    phone: str,
-    country: str,
-) -> str:
-
-    clean = re.sub(r"\D", "", str(phone))
-    base_country = re.sub(r'\s*\d+$', '', str(country)).strip().upper()
-
-    for prefix in sorted(
-        GLOBAL_COUNTRY_MAP.keys(),
-        key=len,
-        reverse=True,
-    ):
-        try:
-            mapped_country = str(GLOBAL_COUNTRY_MAP[prefix]).strip().upper()
-
-            if (
-                mapped_country == base_country
-                and clean.startswith(str(prefix))
-            ):
-                return clean[len(str(prefix)):]
-
-        except Exception:
-            continue
-
-    return clean
-
-
-# =========================================================
-# SAFE BOT HELPERS
-# =========================================================
-
-async def send_msg(
-    bot,
-    chat_id: int | str,
-    text: str,
-    reply_markup=None,
-):
+async def get_available_services():
     try:
-        return await bot.send_message(
-            chat_id=chat_id,
-            text=text,
-            parse_mode="HTML",
-            reply_markup=reply_markup,
-        )
+        async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
 
-    except TelegramForbiddenError:
-        logger.warning(
-            "Bot blocked by user/chat %s",
-            chat_id,
-        )
-        return None
+            async with db.execute(
+                """
+                SELECT *
+                FROM services
+                ORDER BY id ASC
+                """
+            ) as cursor:
+                rows = await cursor.fetchall()
+
+        return rows
 
     except Exception:
         logger.exception(
-            "send_message failed for %s",
-            chat_id,
+            "Failed to load services"
         )
-        return None
+        return []
 
 
-async def safe_edit(
-    message: types.Message,
-    text: str,
-    reply_markup=None,
+async def get_available_countries(
+    service_name: str,
 ):
     try:
-        return await message.edit_text(
-            text=text,
-            parse_mode="HTML",
-            reply_markup=reply_markup,
-        )
+        async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
 
-    except TelegramBadRequest as exc:
-        if "message is not modified" in str(exc).lower():
-            return message
+            async with db.execute(
+                """
+                SELECT DISTINCT country
+                FROM numbers
+                WHERE service = ?
+                  AND status = 'available'
+                ORDER BY country ASC
+                """,
+                (service_name,)
+            ) as cursor:
+                rows = await cursor.fetchall()
 
-        logger.warning(
-            "edit_text TelegramBadRequest: %s",
-            exc,
-        )
-
-    except Exception:
-        logger.exception("safe_edit failed")
-
-    return None
-
-
-async def safe_answer(
-    callback: types.CallbackQuery,
-    text: str = "",
-    show_alert: bool = False,
-):
-    try:
-await callback.answer(
-            text=text,
-            show_alert=show_alert,
-        )
-    except Exception:
-        pass
-
-
-# =========================================================
-# MAIN REPLY KEYBOARD
-# =========================================================
-
-def main_permanent_keyboard(
-    user_id: int,
-    is_admin: bool = False,
-) -> ReplyKeyboardMarkup:
-
-    rows = [
-        [
-            KeyboardButton(text="𝐆𝐄𝐓 𝐍𝐔𝐌𝐁𝐄𝐑", style="success", icon_custom_emoji_id=E_GET),
-            KeyboardButton(text="𝐒𝐓𝐀𝐓𝐔𝐒", style="primary", icon_custom_emoji_id=E_STATUS),
-        ],
-        [
-            KeyboardButton(text="𝐀𝐂𝐓𝐈𝐕𝐄 𝐍𝐔𝐌𝐁𝐄𝐑", style="primary", icon_custom_emoji_id=E_ACTIVE),
-            KeyboardButton(text="𝐒𝐔𝐏𝐏𝐎𝐑𝐓", style="primary", icon_custom_emoji_id=E_SUPPORT),
-        ],
-        [
-            KeyboardButton(text="𝐑𝐄𝐅𝐄𝐑", style="primary", icon_custom_emoji_id=E_REFER),
-            KeyboardButton(text="𝐖𝐀𝐋𝐋𝐄𝐓", style="success", icon_custom_emoji_id=E_WALLET),
-        ],
-        [
-            KeyboardButton(text="𝐋𝐄𝐀𝐃𝐄𝐑𝐁𝐎𝐀𝐑𝐃", style="primary", icon_custom_emoji_id="6307633028680130361"),
+        return [
+            row["country"]
+            for row in rows
+            if row["country"]
         ]
-    ]
 
-    if is_admin:
-        rows.append([KeyboardButton(text="𝐀𝐃𝐌𝐈𝐍 𝐏𝐀𝐍𝐄𝐋", style="danger", icon_custom_emoji_id=E_ADMIN)])
+    except Exception:
+        logger.exception(
+            "Failed to load countries"
+        )
+        return []
 
-    return ReplyKeyboardMarkup(
-        keyboard=rows,
-        resize_keyboard=True,
-        input_field_placeholder="Choose an option...",
+
+# =========================================================
+# SERVICE KEYBOARD
+# =========================================================
+
+def service_selection_keyboard(
+    services,
+) -> InlineKeyboardMarkup:
+
+    rows = []
+    current_row = []
+
+    for service in services:
+        try:
+            service_name = (
+                service["name"]
+                if isinstance(service, dict)
+                else service["service"]
+            )
+        except Exception:
+            service_name = str(service)
+
+        service_name = str(
+            service_name
+        ).strip()
+
+        if not service_name:
+            continue
+
+        emoji_id = get_service_custom_emoji_id(
+            service_name
+        )
+
+        current_row.append(
+            ib(
+                service_name.upper(),
+                callback_data=pack_callback(
+                    "svc",
+                    service_name,
+                ),
+                style="primary",
+                emoji_id=emoji_id,
+            )
+        )
+
+        if len(current_row) == 2:
+            rows.append(current_row)
+            current_row = []
+
+    if current_row:
+        rows.append(current_row)
+
+    rows.append(
+        [
+            ib(
+                "↩️ BACK",
+                callback_data="back_main",
+                style="primary",
+                emoji_id=E_BACK,
+            )
+        ]
+    )
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=rows
     )
 
 
 # =========================================================
-# INLINE BUTTON HELPER
+# COUNTRY KEYBOARD
 # =========================================================
 
-def ib(
-    text: str,
-    *,
-    callback_data: Optional[str] = None,
-    url: Optional[str] = None,
-    style: Optional[str] = None,
-    emoji_id: Optional[str] = None,
-    copy_text: Optional[str] = None,
-):
-    kwargs = {
-        "text": text,
-    }
+def country_selection_keyboard(
+    countries,
+    service_name: str,
+) -> InlineKeyboardMarkup:
 
-    if callback_data is not None:
-        kwargs["callback_data"] = callback_data
+    rows = []
+    current_row = []
 
-    if url is not None:
-        kwargs["url"] = url
+    for country in countries:
 
-    if style is not None:
-        kwargs["style"] = style
+        country_name = str(
+            country
+        ).strip()
 
-    if emoji_id is not None:
-        kwargs["icon_custom_emoji_id"] = emoji_id
+        if not country_name:
+            continue
 
-    if copy_text is not None:
-        kwargs["copy_text"] = CopyTextButton(
-            text=copy_text
+        emoji_id = get_country_custom_emoji_id(
+            country_name
         )
 
-    return InlineKeyboardButton(**kwargs)
+        current_row.append(
+            ib(
+                country_name.upper(),
+                callback_data=pack_callback(
+                    "country",
+                    service_name,
+                    country_name,
+                ),
+                style="primary",
+                emoji_id=emoji_id,
+            )
+        )
+
+        if len(current_row) == 2:
+            rows.append(current_row)
+            current_row = []
+
+    if current_row:
+        rows.append(current_row)
+
+    rows.append(
+        [
+            ib(
+                "↩️ BACK",
+                callback_data="get_number",
+                style="primary",
+                emoji_id=E_BACK,
+            )
+        ]
+    )
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=rows
+    )
 
 
 # =========================================================
-# ADMIN PANEL
+# NUMBER DISPLAY
 # =========================================================
 
-def admin_inline_panel() -> InlineKeyboardMarkup:
+def format_number_for_user(
+    phone: str,
+    country: str,
+    remove_cc: bool = True,
+) -> str:
+
+    if not phone:
+        return ""
+
+    if remove_cc:
+        return extract_pure_number_without_cc(
+            phone,
+            country,
+        )
+
+    return str(phone)
+
+
+def number_info_text(
+    phone: str,
+    country: str,
+    service: str,
+    rate: Any = None,
+    remove_cc: bool = True,
+) -> str:
+
+    display_number = format_number_for_user(
+        phone,
+        country,
+        remove_cc=remove_cc,
+    )
+
+    service_emoji = format_p_emo(
+        get_service_custom_emoji_id(service),
+        "📱",
+    )
+
+    country_emoji = format_p_emo(
+        get_country_custom_emoji_id(country),
+        "🌍",
+    )
+
+    text = (
+        f"{service_emoji} <b>Service:</b> "
+        f"{service}\n"
+        f"{country_emoji} <b>Country:</b> "
+        f"{country}\n\n"
+        f"📱 <b>Number:</b> "
+        f"<code>{display_number}</code>"
+    )
+
+    if rate is not None:
+        text += (
+            f"\n💰 <b>Rate:</b> "
+            f"{rate}"
+        )
+
+    return text
+
+
+# =========================================================
+# REMOVE COUNTRY CODE BUTTON
+# =========================================================
+
+def cc_toggle_keyboard(
+    enabled: bool = True,
+):
+
+    status = "ON ✅" if enabled else "OFF ❌"
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 ib(
-                    "🔌 API Panels",
-                    callback_data="adm:panels",
+                    f"Remove CC: {status}",
+                    callback_data="toggle_cc",
                     style="primary",
-                    emoji_id="5316832430529722441",
-                ),
-                ib(
-                    " Inventory Dashboard",
-                    callback_data="adm:inventory",
-                    style="primary",
-                    emoji_id=E_STATUS,
-                ),
+                    emoji_id=E_CC,
+                )
             ],
             [
                 ib(
-                    " Add Numbers Pool",
-                    callback_data="adm:addnum",
-                    style="success",
-                    emoji_id=E_GET,
-                ),
-                ib(
-                    " Add Service",
-                    callback_data="adm:addservice",
-                    style="success",
-                    emoji_id=E_GET,
-                ),
-            ],
-            [
-                ib(
-                    " Manage Services",
-                    callback_data="adm:services",
+                    "↩️ BACK",
+                    callback_data="back_main",
                     style="primary",
-                    emoji_id=E_STATUS,
-                ),
-                ib(
-                    " Withdrawal Nodes",
-                    callback_data="adm:withdrawals",
-                    style="primary",
-                    emoji_id=E_ACTIVE,
-                ),
-            ],
-            [
-                ib(
-                    "📢 PUSH Broadcast",
-                    callback_data="adm:broadcast",
-                    style="primary",
-                    emoji_id=E_STATUS,
-                ),
-                ib(
-                    " Admins Configuration",
-                    callback_data="adm:admins",
-                    style="primary",
-                    emoji_id=E_ADMIN,
-                ),
-            ],
-            [
-                ib(
-                    " Add System Admin",
-                    callback_data="adm:addadmin",
-                    style="success",
-                    emoji_id=E_GET,
-                ),
-                ib(
-                    " Decouple Admin Node",
-                    callback_data="adm:removeadmin",
-                    style="danger",
-                    emoji_id=E_ADMIN,
-                ),
-            ],
-            [
-                ib(
-                    " Requirements Channel",
-                    callback_data="adm:reqchannel",
-                    style="primary",
-                    emoji_id=E_SUPPORT,
-                ),
-                ib(
-                    " Global Configurations",
-                    callback_data="adm:settings",
-                    style="primary",
-                    emoji_id=E_STATUS,
-                ),
+                    emoji_id=E_BACK,
+                )
             ],
         ]
     )
 
+
 # =========================================================
-# MEMBERSHIP
+# NUMBER REQUEST
 # =========================================================
 
-async def verify_dual_membership(
-    bot,
+async def reserve_number(
     user_id: int,
-) -> bool:
+    service_name: str,
+    country_name: str,
+):
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
+
+            cursor = await db.execute(
+                """
+                SELECT *
+                FROM numbers
+                WHERE service = ?
+                  AND country = ?
+                  AND status = 'available'
+                ORDER BY id ASC
+                LIMIT 1
+                """,
+                (
+                    service_name,
+                    country_name,
+                )
+            )
+
+            row = await cursor.fetchone()
+
+            if not row:
+                return None
+
+            number_id = row["id"]
+
+            await db.execute(
+                """
+                UPDATE numbers
+                SET status = 'active',
+                    user_id = ?,
+                    assigned_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                  AND status = 'available'
+                """,
+                (
+                    user_id,
+                    number_id,
+                )
+            )
+
+            await db.commit()
+
+            return dict(row)
+
+    except Exception:
+        logger.exception(
+            "Failed to reserve number"
+        )
+        return None
+
+
+# =========================================================
+# ACTIVE NUMBER CHECK
+# =========================================================
+
+async def get_user_active_numbers(
+    user_id: int,
+):
 
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
 
-            await db.execute(
+            async with db.execute(
                 """
-                CREATE TABLE IF NOT EXISTS global_config (
-                    config_key TEXT PRIMARY KEY,
-                    config_value TEXT
-                )
-                """
-            )
+                SELECT *
+                FROM numbers
+                WHERE user_id = ?
+                  AND status = 'active'
+                ORDER BY id DESC
+                """,
+                (user_id,)
+            ) as cursor:
+                rows = await cursor.fetchall()
 
-            await db.commit()
+        return rows
+
+    except Exception:
+        logger.exception(
+            "Failed to get active numbers"
+        )
+        return []
+
+
+# =========================================================
+# NUMBER STATUS
+# =========================================================
+
+async def get_number_status(
+    number_id: int,
+):
+
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
 
             async with db.execute(
                 """
-                SELECT config_value
-                FROM global_config
-                WHERE config_key = 'req_channel'
-                """
+                SELECT *
+                FROM numbers
+                WHERE id = ?
+                LIMIT 1
+                """,
+                (number_id,)
             ) as cursor:
 
                 row = await cursor.fetchone()
 
-        db_channel = (
-            row["config_value"]
-            if row
-            else UPDATE_CHANNEL_LINK
-        )
-
-        channel_value = str(
-            db_channel or ""
-        ).strip()
-
-        if channel_value.startswith("-100"):
-            target_channel = int(channel_value)
-
-        elif "t.me/" in channel_value:
-            clean = channel_value.split(
-                "t.me/",
-                1,
-            )[-1].strip("/")
-
-            if clean.startswith("+"):
-                return False
-
-            if "joinchat/" in clean:
-                return False
-
-            target_channel = (
-                clean
-                if clean.startswith("@")
-                else f"@{clean}"
-            )
-
-        else:
-            target_channel = (
-                channel_value
-                if channel_value.startswith("@")
-                else f"@{channel_value}"
-            )
-
-        channel_member = await bot.get_chat_member(
-            chat_id=target_channel,
-            user_id=user_id,
-        )
-
-        if channel_member.status in {
-            "left",
-            "kicked",
-        }:
-            return False
-
-        group_member = await bot.get_chat_member(
-            chat_id=OTP_GROUP_ID,
-            user_id=user_id,
-        )
-
-        if group_member.status in {
-            "left",
-            "kicked",
-        }:
-            return False
-
-        return True
+        return row
 
     except Exception:
         logger.exception(
-            "Membership verification failed for %s",
-            user_id,
+            "Failed to get number status"
         )
-        return False
-
-
-# =========================================================
-# JOIN KEYBOARD
-# =========================================================
-
-def generate_join_inline_keyboard():
-
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                ib(
-                    " Join Official Channel",
-                    url=UPDATE_CHANNEL_LINK,
-                    style="primary",
-                    emoji_id=E_SUPPORT,
-                )
-            ],
-            [
-                ib(
-                    " Join Method Channel",
-                    url=EXTRA_LINK_1,
-                    style="primary",
-                    emoji_id=E_SUPPORT,
-                )
-            ],
-            [
-                ib(
-                    " Join Payment Proofs",
-                    url=EXTRA_LINK_2,
-                    style="primary",
-                    emoji_id=E_SUPPORT,
-                )
-            ],
-            [
-                ib(
-                    " Join Official OTP Group",
-                    url=OTP_GROUP_LINK,
-                    style="primary",
-                    emoji_id=E_GROUP,
-                )
-            ],
-            [
-                ib(
-                    " Try Again / VERIFY",
-                    callback_data="membership:retry",
-                    style="success",
-                    emoji_id=E_VERIFY,
-                )
-            ],
-        ]
-    )
-
-
-async def deny_access(
-    bot,
-    user_id: int,
-):
-    await send_msg(
-        bot,
-        user_id,
-        (
-            f"{SYS_EMOJI}  "
-            f"<b>Access Denied!</b>\n\n"
-            f"Please join both the official channel "
-            f"and OTP group first."
-        ),
-        generate_join_inline_keyboard(),
-    )
-
-
-async def require_admin(
-    callback: types.CallbackQuery,
-) -> bool:
+        return None
+ ) -> bool:
 
     try:
         return await db_mgr.is_admin(
@@ -1165,7 +1154,7 @@ def number_result_text(
         c_emoji = '🌍'
 
     normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    premium = "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝗪𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝗶𝐣𝗸𝗹𝗺𝗻𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝘃𝘄𝘅𝘆𝘇"
+    premium = "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝗪𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝗶𝐣𝗸𝗹𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝘃𝘄𝘅𝘆𝘇"
     premium_service = service.upper().translate(str.maketrans(normal, premium))
 
     return (
@@ -1377,7 +1366,7 @@ async def process_allocation_service(
         active_traffic_countries = {str(row[0]).strip() for row in traffic_rows}
 
     normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    premium = "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝗪𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝗶𝐣𝗸𝗹𝗺𝗻𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝘃𝘄𝘅𝘆𝘇"
+    premium = "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝗪𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝗶𝐣𝗸𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝘃𝘄𝘅𝘆𝘇"
     premium_service = service.translate(str.maketrans(normal, premium))
 
     if not country_rows:
@@ -1424,5 +1413,726 @@ async def process_allocation_service(
             emoji_id=get_country_custom_emoji_id(country_name),
         )
         
-        current_r
+        current_row.append(btn)
 
+        if len(current_row) == 2:
+            rows.append(current_row)
+            current_row = []
+
+    if current_row:
+        rows.append(current_row)
+
+    # 🔥 শুধুমাত্র মেইন মেনুতে যাওয়ার ব্যাক বাটন (রিফ্রেশ বাটন গায়েব)
+    rows.append(
+        [
+            ib(
+                " Back",
+                callback_data="menu:main",
+                style="primary",
+                emoji_id=E_BACK,
+            )
+        ]
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=rows
+    )
+
+    try:
+        s_emo_id = get_service_custom_emoji_id(service)
+        s_emo = f'<tg-emoji emoji-id="{s_emo_id}">💬</tg-emoji>'
+    except Exception:
+        s_emo = '💬'
+
+    await safe_edit(
+        callback.message,
+        (
+            f'<tg-emoji emoji-id="5409048419211682843">💠</tg-emoji> <b>Service:</b> {s_emo} <b>{premium_service}</b>\n\n'
+            f'<b>Select a country from available stock:</b>'
+        ),
+        keyboard,
+    )
+
+    await safe_answer(callback)
+
+@router.callback_query(
+    F.data.startswith("country:")
+)
+async def process_allocation_final(
+    callback: types.CallbackQuery,
+    state: FSMContext,
+):
+
+    if not await verify_dual_membership(
+        callback.bot,
+        callback.from_user.id,
+    ):
+        await deny_access(
+            callback.bot,
+            callback.from_user.id,
+        )
+        await safe_answer(
+            callback,
+            " Access denied.",
+            show_alert=True,
+        )
+        return
+
+    values = unpack_callback(
+        callback.data,
+        "country",
+    )
+
+    if len(values) != 2:
+        await safe_answer(
+            callback,
+            " Invalid country selection.",
+ if len(values) != 2:
+        await safe_answer(
+            callback,
+            " Invalid country selection.",
+            show_alert=True,
+        )
+        return
+
+    service = values[0].strip().upper()
+    country = values[1].strip()
+
+    categories = await db_mgr.get_categories()
+
+    cat_spec = next(
+        (
+            c
+            for c in categories
+            if str(c["name"]).upper()
+            == service
+        ),
+        None,
+    )
+
+    if not cat_spec:
+        await safe_answer(
+            callback,
+            "❌ Service configuration unavailable.",
+            show_alert=True,
+        )
+        return
+
+    await safe_answer(
+        callback,
+        "⏳ Allocating number...",
+    )
+
+    allocated = (
+        await db_mgr.allocate_numbers_to_user(
+            callback.from_user.id,
+            service,
+            country,
+            cat_spec["nums_per_user"],
+        )
+    )
+
+    if not allocated:
+        await safe_edit(
+            callback.message,
+            (
+                f" <b>OUT OF STOCK</b>\n\n"
+                f"No numbers left for "
+                f"<b>{service}</b> "
+                f"({country})."
+            ),
+        )
+        return
+
+    await show_allocated_numbers(
+        callback.message,
+        service,
+        country,
+        allocated,
+    )
+
+
+@router.callback_query(
+    F.data.startswith("change:")
+)
+async def process_change_number(
+    callback: types.CallbackQuery,
+):
+    if not await verify_dual_membership(
+        callback.bot,
+        callback.from_user.id,
+    ):
+        await deny_access(
+            callback.bot,
+            callback.from_user.id,
+        )
+        return await safe_answer(
+            callback,
+            " Access denied.",
+            show_alert=True,
+        )
+
+    # 🔥 Database Columns Auto-Migration (Ultra Safe - Separate Blocks)
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute(
+                "ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0"
+            )
+        except Exception:
+            pass
+
+        try:
+            # wasted_count কে এখন আমরা Spam Click Tracker হিসেবে ইউজ করবো
+            await db.execute(
+                "ALTER TABLE users ADD COLUMN wasted_count INTEGER DEFAULT 0"
+            )
+        except Exception:
+            pass
+
+        try:
+            await db.execute(
+                "ALTER TABLE users ADD COLUMN last_number_time REAL DEFAULT 0"
+            )
+        except Exception:
+            pass
+        
+        await db.commit()
+        
+        db.row_factory = aiosqlite.Row
+
+        cursor = await db.execute(
+            "SELECT * FROM users WHERE user_id = ?",
+            (callback.from_user.id,)
+        )
+
+        user_data = await cursor.fetchone()
+
+    user_dict = dict(user_data) if user_data else {}
+
+    # 🚫 Ban Check First
+    if user_dict.get('is_banned', 0):
+        return await safe_answer(
+            callback,
+            "🚫 You are permanently BANNED for abusing the system!",
+            show_alert=True
+        )
+
+    # ⏱️ 15-Second Cooldown & 5-Click Spam Check
+    current_time = time.time()
+    last_time = user_dict.get(
+        'last_number_time',
+        0
+    )
+
+    if not last_time:
+        last_time = 0
+        
+    time_diff = current_time - float(last_time)
+
+    spam_count = user_dict.get(
+        'wasted_count',
+        0
+    )
+
+    if not spam_count:
+        spam_count = 0
+
+    if time_diff < 15.0:
+        spam_count += 1
+        
+        if spam_count >= 5:
+            # 🛑 5 বার স্প্যাম ক্লিক করলেই ডাইরেক্ট পার্মানেন্ট ব্যান
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute(
+                    "UPDATE users SET is_banned = 1, wasted_count = ? WHERE user_id = ?",
+                    (
+                        spam_count,
+                        callback.from_user.id
+                    )
+                )
+                await db.commit()
+                
+            # Notify Admins
+            normal_chars = (
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "abcdefghijklmnopqrstuvwxyz"
+                "0123456789"
+            )
+
+            premium_chars = (
+                "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕"
+                "𝐖𝐗𝐘𝐙"
+                "𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯"
+                "𝐰𝐱𝐲𝐳"
+                "𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗"
+            )
+
+            font_map = str.maketrans(
+                normal_chars,
+                premium_chars
+            )
+            
+            username = (
+                f"@{callback.from_user.username}"
+                if callback.from_user.username
+                else "No Username"
+            )
+
+            u_name = callback.from_user.first_name
+            
+            alert_text = (
+                f'<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji> '
+                f'<b>{"SPAM ABUSE DETECTED".translate(font_map)}</b>\n\n'
+                f'{"This user has been permanently banned for button spamming".translate(font_map)}.\n\n'
+                f'<tg-emoji emoji-id="5453957997418004470">👤</tg-emoji> '
+                f'{"Name".translate(font_map)}: '
+                f'<b>{str(u_name).translate(font_map)}</b>\n'
+                f'<tg-emoji emoji-id="5354972242629383937">🆔</tg-emoji> '
+                f'{"UID".translate(font_map)}: '
+                f'<code>{str(callback.from_user.id).translate(font_map)}</code>\n'
+                f'<tg-emoji emoji-id="6275857834127134596">🔗</tg-emoji> '
+                f'{"Username".translate(font_map)}: '
+                f'{username.translate(font_map)}'
+            )
+            
+            admin_kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        ib(
+                            "Unban User".translate(font_map),
+                            callback_data=f"sys_unban:{callback.from_user.id}",
+                            style="success",
+                            emoji_id="5472250091332993630"
+                        ),
+                        ib(
+                            "Notice User".translate(font_map),
+                            callback_data=f"sys_notice:{callback.from_user.id}",
+                            style="primary",
+                            emoji_id="6269532506941298061"
+                        )
+                    ]
+                ]
+            )
+            
+            admins = (
+                await db_mgr.get_admins()
+                if hasattr(db_mgr, 'get_admins')
+                else []
+            )
+
+            for admin_id in admins:
+                try:
+                    await callback.bot.send_message(
+                        chat_id=admin_id,
+                        text=alert_text,
+                        reply_markup=admin_kb
+                    )
+                except Exception:
+                    pass
+
+            return await safe_answer(
+                callback,
+                "🚫 BANNED: You spammed the button too many times!",
+                show_alert=True
+            )
+            
+        else:
+            # স্প্যাম কাউন্ট আপডেট করে ওয়ার্নিং দেওয়া হচ্ছে
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute(
+                    "UPDATE users SET wasted_count = ? WHERE user_id = ?",
+                    (
+                        spam_count,
+                        callback.from_user.id
+                    )
+                )
+                await db.commit()
+                
+            wait_time = int(
+                15 - time_diff
+            )
+
+            return await safe_answer(
+                callback,
+                f"⚠️ Please wait {wait_time}s! "
+                f"Spamming will get you banned "
+                f"({spam_count}/5)",
+                show_alert=True
+            )
+
+    # ⏳ ১৫ সেকেন্ড পার হয়ে গেলে নরমাল চেঞ্জ অ্যাকসেপ্ট হবে এবং স্প্যাম কাউন্ট জিরো হয়ে যাবে
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET last_number_time = ?, wasted_count = 0 WHERE user_id = ?",
+            (
+                current_time,
+                callback.from_user.id
+            )
+        )
+        await db.commit()
+
+    # Original Allocation Logic
+    values = unpack_callback(
+        callback.data,
+        "change",
+    )
+
+    if len(values) != 2:
+        return await safe_answer(
+            callback,
+            " Invalid request.",
+            show_alert=True
+        )
+
+    service = values[0].strip().upper()
+    country = values[1].strip()
+
+    await safe_answer(
+        callback,
+        " Changing number..."
+    )
+
+    try:
+        await db_mgr.clear_user_numbers(
+            callback.from_user.id,
+            service,
+        )
+    except Exception:
+        pass
+
+    categories = await db_mgr.get_categories()
+
+    cat_spec = next(
+        (
+            c
+            for c in categories
+            if str(c["name"]).upper()
+            == service
+        ),
+        None
+    )
+
+    if not cat_spec:
+        return await safe_edit(
+            callback.message,
+            " Selected service is unavailable."
+        )
+
+    allocated = await db_mgr.allocate_numbers_to_user(
+        callback.from_user.id,
+        service,
+        country,
+        cat_spec["nums_per_user"],
+    )
+
+    if not allocated:
+        return await safe_edit(
+            callback.message,
+            f" <b>OUT OF STOCK</b>\n\n"
+            f"No numbers left for "
+            f"{service} ({country})."
+        )
+
+    await show_allocated_numbers(
+        callback.message,
+        service,
+        country,
+        allocated,
+    )
+
+
+@router.callback_query(
+    F.data.startswith("cc:")
+)
+async def user_toggle_cc(
+    callback: types.CallbackQuery,
+):
+
+    if not await verify_dual_membership(
+        callback.bot,
+        callback.from_user.id,
+    ):
+        await deny_access(
+            callback.bot,
+            callback.from_user.id,
+        )
+        await safe_answer(
+            callback,
+            " Access denied.",
+            show_alert=True,
+        )
+        return
+
+    values = unpack_callback(
+        callback.data,
+        "cc",
+    )
+
+    if len(values) != 2:
+        await safe_answer(
+            callback,
+            " Invalid request.",
+            show_alert=True,
+        )
+        return
+
+    service = values[0].strip().upper()
+    country = values[1].strip()
+
+    new_status = await db_mgr.toggle_config(
+        "remove_cc"
+    )
+
+    categories = await db_mgr.get_categories()
+
+    cat_spec = next(
+        (
+            c
+            for c in categories
+            if str(c["name"]).upper()
+            == service
+        ),
+        None
+    )
+
+    quota = (
+        cat_spec["nums_per_user"]
+        if cat_spec
+        else None
+    )
+
+    async with aiosqlite.connect(DB_PATH) as db:
+
+        db.row_factory = aiosqlite.Row
+
+        query = """
+            SELECT phone_number
+            FROM numbers_pool
+            WHERE assigned_to = ?
+              AND service = ?
+              AND UPPER(country) = UPPER(?)
+            ORDER BY assigned_at DESC
+        """
+
+        params = [
+            callback.from_user.id,
+            service,
+            country,
+        ]
+
+        if quota:
+            query += " LIMIT ?"
+            params.append(quota)
+
+        async with db.execute(
+            query,
+            params,
+        ) as cursor:
+
+            rows = await cursor.fetchall()
+
+    allocated = [
+        row["phone_number"]
+        for row in rows
+    ]
+
+    if not allocated:
+        await safe_answer(
+            callback,
+            "No active number session found.",
+            show_alert=True,
+        )
+        return
+
+    await safe_edit(
+        callback.message,
+        number_result_text(
+            service,
+            country,
+        ),
+        number_result_keyboard(
+            service,
+            country,
+            allocated,
+            new_status,
+        ),
+    )
+
+    await safe_answer(
+        callback,
+        f"Remove CC is now {new_status}.",
+    )
+
+
+# 🔥 নতুন ক্লোজ/হোম হ্যান্ডলার (ব্যাক দিলে এই মেসেজটা আসবে)
+@router.callback_query(
+    F.data == "menu:close"
+)
+async def callback_menu_close(
+    callback: types.CallbackQuery,
+    state: FSMContext
+):
+    await state.clear()
+
+    await safe_edit(
+        callback.message,
+        (
+            f"{SYS_EMOJI} "
+            f"<b>Action cancelled.</b>\n\n"
+            f"Please use the menu buttons below."
+        )
+    )
+
+    await safe_answer(callback)
+
+
+# 🔥 আপনার আপডেট করা ওয়ালেট সেট ফাংশন
+@router.callback_query(
+    F.data == "wallet:set"
+)
+async def user_req_set_wallet(
+    callback: types.CallbackQuery,
+    state: FSMContext
+):
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                ib(
+                    " Bkash",
+                    callback_data="wallet:bkash",
+                    style="primary",
+                    emoji_id="5348469219761626211",
+                ),
+                ib(
+                    " Nagad",
+                    callback_data="wallet:nagad",
+                    style="primary",
+                    emoji_id="6147706485439730700",
+                ),
+            ],
+            [
+                ib(
+                    " Rocket",
+                    callback_data="wallet:rocket",
+                    style="primary",
+                    emoji_id="5346042941196507141",
+                ),
+                ib(
+                    " Binance",
+                    callback_data="wallet:binance",
+                    style="primary",
+                    emoji_id="5348212415077064131",
+                ),
+            ],
+            [
+                # 🔥 ম্যাজিক! ব্যাক বাটন এখন "menu:close" এ যাবে
+                ib(
+                    " Back",
+                    callback_data="menu:close",
+                    style="primary",
+                    emoji_id=E_BACK,
+                )
+            ],
+        ]
+    )
+
+    await safe_edit(
+        callback.message,
+        (
+            f"{SYS_EMOJI}  "
+            f"<b>Choose Wallet Provider</b>"
+        ),
+        keyboard,
+    )
+
+    await safe_answer(callback)
+
+
+@router.callback_query(
+    F.data.startswith("wallet:")
+)
+async def user_select_wallet_provider(
+    callback: types.CallbackQuery,
+    state: FSMContext
+):
+
+    method = callback.data.split(
+        ":",
+        1,
+    )[1]
+
+    if method == "view":
+        await safe_answer(callback)
+        return
+
+    method = method.title()
+
+    await state.update_data(
+        wallet_type=method
+    )
+
+    await state.set_state(
+        Form.waiting_for_set_wallet_number
+    )
+
+    if method in {
+        "Bkash",
+        "Nagad",
+        "Rocket",
+    }:
+        prompt = (
+            f" Send your "
+            f"<b>{method}</b> number:"
+        )
+    else:
+        prompt = (
+            f" Send your "
+            f"<b>{method}</b> Pay ID "
+        )
+
+    await send_msg(
+        callback.bot,
+        callback.from_user.id,
+        (
+            f"{SYS_EMOJI}  {prompt}\n\n"
+            f"Send <b>/cancel</b> to stop."
+        ),
+    )
+
+    await safe_answer(callback)
+
+
+@router.callback_query(
+    F.data == "withdraw:start"
+)
+async def user_start_withdraw_flow(
+    callback: types.CallbackQuery,
+    state: FSMContext
+):
+
+    await state.clear()
+
+    withdraw_status = await db_mgr.get_config(
+        "withdraw_enabled"
+    )
+
+    if str(withdraw_status).upper() == "OFF":
+        await safe_answer(
+            callback,
+            " Withdraw is disabled by admin.",
+            show_alert=True,
+        )
+        return
+
+    user = await db_mgr.get_user(
+        callback.from_user.id
+    )
+
+    if not user:
+        await safe_answer(
+            callback,
+            " User account not found.",
+            show_alert=True,
+        )
+        return
